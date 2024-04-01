@@ -1,0 +1,158 @@
+
+import arcade
+import arcade.gui
+import random
+
+#Made by Raghav
+
+#Initializing global variables
+SCREEN_WIDTH = 900
+SCREEN_HEIGHT = 900
+SCREEN_TITLE = "Trivia Game"
+DEFAULT_LINE = 45
+
+#Main Class
+class MyGame(arcade.Window):
+
+   def __init__(self):
+       super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+
+       #Initializing and storing all the questions
+       question1 = ["Which of the following is an example of a phishing attack?", 
+                    "Loading malicious software onto a user's computer in order to secretly gain access to sensitive information", 
+                    "Flooding a user's computer with e-mail requests in order to cause the computer to crash", 
+                    "Using fraudulent e-mails in order to trick a user into voluntarily providing sensitive information"]
+
+       question2 = ["Which of the following best exemplifies the use of multifactor authentication to protect an online banking system?", 
+                    "After entering a password for an online bank account, a user must also enter a code that is sent to the user's phone via text message.", 
+                    "When multiple people have a shared online bank account, they are each required to have their own unique ", 
+                    "An online bank requires users to change their account passwords multiple times per year without using the same password twice." ]
+       
+       question3 = ["Which of the following best describes a direct benefit in using redundant routing on the Internet?", 
+                    "Redundancy enables messages to be transmitted with as few packets as possible.", 
+                    "Redundancy often allows messages to be sent on the network even if some network devices or connections have failed.", 
+                    "Redundancy prevents network communications from being intercepted by unauthorized individuals."]
+       
+       question4 = ["Which of the following best explains how an analog audio signal is typically represented by a computer?", 
+                    "An analog audio signal is measured at regular intervals. Each measurement is stored as a sample, which is represented at the lowest level as a sequence of bits.", 
+                    "An analog audio signal is measured as a sequence of operations that describe how the sound can be reproduced. The operations are represented at the lowest level as programming instructions.", 
+                    "An analog audio signal is measured as text that describes the attributes of the sound. The text is represented at the lowest level as a string."]
+       
+       question5 = ["A local router is configured to limit the bandwidth of guest users connecting to the Internet. Which of the following best explains the result of this configuration as compared to a configuration in which the router does not limit the bandwidth?", 
+                    "Guest users will be restricted in the maximum amount of data that they can send and receive per second.", 
+                    "The number of packets required for guest users to send and receive data is likely to decrease.", 
+                    "Guest users will be prevented from having fault-tolerant routing on the Internet."]
+
+       #Assigning the indexes for the correct answer in each question array
+       self.correctIndexes = [3,1,2,1,1]
+
+       #Assinging a list of all the questions
+       self.questions = [question1,question2,question3,question4,question5]
+
+       #Variables to track which question user is on and what answer they input
+       self.trackQuestionIndex = 0
+       self.trackAnswers = []
+   
+   #Returns the answer choice selection based on which key is pressed
+   def on_key_press(self,key,modifiers):
+       self.trackQuestionIndex += 1
+       #If a key is pressed it returns a number associated with the specific answer choice
+       if key == arcade.key.A:
+           self.trackAnswers.append(1)
+       elif key == arcade.key.B:
+           self.trackAnswers.append(2)
+       elif key == arcade.key.C:
+           self.trackAnswers.append(3)
+       else:
+           self.trackAnswers.append(3)
+
+   def on_draw(self):
+      """
+      Draw out the background and the individual questions
+      """
+
+      #Drawing the backgroud 
+      arcade.draw_texture_rectangle(
+          SCREEN_WIDTH // 2,
+          SCREEN_HEIGHT // 2,
+          SCREEN_WIDTH,
+          SCREEN_HEIGHT,
+          arcade.load_texture(r"/Users/Raghav/Desktop/CSPProject/Ricky.png")
+      )
+
+      start_x = 0
+      start_y = SCREEN_HEIGHT - DEFAULT_LINE * 3
+
+      #Drawing out all the 3 questions in each respective framework if still in the game
+      if self.trackQuestionIndex < len(self.questions):
+          arcade.draw_text("Question: " + self.questions[self.trackQuestionIndex][0],
+                         start_x,
+                         start_y,
+                         arcade.color.BLACK,
+                         15,
+                         width = SCREEN_WIDTH,
+                         align = "center")
+          
+          arcade.draw_text("A: " + self.questions[self.trackQuestionIndex][1],
+                         start_x,
+                         start_y-100,
+                         arcade.color.BLACK,
+                         15,
+                         width = SCREEN_WIDTH,
+                         align = "center")
+          
+          arcade.draw_text("B: " + self.questions[self.trackQuestionIndex][2],
+                         start_x,
+                         start_y-150,
+                         arcade.color.BLACK,
+                         15,
+                         width = SCREEN_WIDTH,
+                         align = "center")
+          
+          arcade.draw_text("C: " + self.questions[self.trackQuestionIndex][3],
+                         start_x,
+                         start_y-200,
+                         arcade.color.BLACK,
+                         15,
+                         width = SCREEN_WIDTH,
+                         align = "center")
+
+      #If all questions are answers, returns the number of correct answers  
+      else:
+           self.correctAnswers = 0
+           index = 0
+      
+           #Matches the number of correct answers by comparing selected choice index and answer key index
+           for number in self.trackAnswers:
+              if number == self.correctIndexes[index]:
+                  self.correctAnswers = self.correctAnswers + 1
+              index = index + 1
+
+           #Drawing the Final score on the screen
+           arcade.draw_text("Score: " + str(self.correctAnswers) + "/5",
+                         start_x,
+                         start_y,
+                         arcade.color.BLACK,
+                         40,
+                         width = SCREEN_WIDTH,
+                         align = "center") 
+           
+            #Displaying winning/losing statements
+           if (self.correctAnswers < 4):
+                arcade.draw_text("YOU LOSE!", SCREEN_WIDTH //2, SCREEN_HEIGHT//2, arcade.color.BLACK, font_size = 50, anchor_x = "center")
+           else:
+                arcade.draw_text("YOU WIN!", SCREEN_WIDTH //2, SCREEN_HEIGHT//2, arcade.color.BLACK, font_size = 50, anchor_x = "center")
+
+           
+   #Original setup for screen set to white
+   def setup(self):
+        arcade.set_background_color(arcade.color.WHITE)
+
+#Main method running entire program
+def main():
+    window = MyGame()
+    window.setup()
+    arcade.run()
+
+if __name__ == "__main__":
+    main()

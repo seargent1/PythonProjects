@@ -1,0 +1,348 @@
+
+import arcade
+import random
+import time
+
+#Made by Armaan, Raghav, and Aditya; Armaan made the basic snake game, Aditya the obstacle, Raghav the rest
+
+# Constants
+WIDTH, HEIGHT = 600, 400
+GRID_SIZE = 20
+MOVE_INTERVAL = 0.1
+APPLE_INTERVAL = 2.0
+
+# Colors
+WHITE = arcade.color.WHITE
+RED = arcade.color.RED
+GREEN = arcade.color.GREEN
+
+WON = []
+
+# Snake class
+class Snake:
+    def __init__(self):
+        """
+        Initializing psoitions of snake
+        Initializing intial direction of snake square
+        """
+        self.length = 1
+        self.positions = [(WIDTH // 2, HEIGHT // 2)]
+        self.direction = random.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
+        self.color = GREEN
+        self.move_timer = MOVE_INTERVAL
+
+    def get_head_position(self):
+        #returns positive of first square of snake (head)
+        return self.positions[0]
+
+    def update(self, delta_time):
+        """
+        Continuously checks if snake collides with its own body
+        """
+        self.move_timer -= delta_time
+        if self.move_timer <= 0:
+            self.move_timer = MOVE_INTERVAL
+            #getting position of the head
+            cur = self.get_head_position()
+            x, y = self.direction
+            new = (
+                ((cur[0] + (x * GRID_SIZE)) % WIDTH),
+                (cur[1] + (y * GRID_SIZE)) % HEIGHT,
+            )
+            # Check if the new position collides with the snake's body
+            if new in self.positions[1:]:
+                raise GameOverException("Snake collided with its body")
+            self.positions.insert(0, new)
+            if len(self.positions) > self.length:
+                self.positions.pop()
+    
+    def render(self):
+        #Renders the snake body to be displayed on teh screen
+        for x, y in self.positions:
+            arcade.draw_rectangle_filled(x, y, GRID_SIZE, GRID_SIZE, self.color)
+
+#Player/Laser class
+class Player(arcade.Sprite):
+    """ Player Class """
+
+    def __init__(self):
+        #Initializing coordinates of the Lazer
+        self.positionLaserx =80
+        self.positionLasery =40
+        self.laserPositions = []
+      
+
+        self.laserPosition = [80,40]
+
+    def update(self):
+        """ Move the player """
+        # Remove these lines if physics engine is moving player.
+        self.positionLaserx += self.change_x
+        self.positionLasery += self.change_y
+        self.laserPosition = [self.positionLaserx,self.positionLasery]
+
+    #Rendering laser on the screen to be displayed
+    def render(self):
+        arcade.draw_rectangle_filled(self.positionLaserx, self.positionLasery, GRID_SIZE, GRID_SIZE, RED)
+
+
+# Apple class
+class Apple:
+    def __init__(self, snake_positions):
+        """
+        Initializing intial coordinates/details for display of apple
+        """
+        self.position = (0, 0)
+        self.color = RED
+        #Assuming apple is consumed to be true
+        self.consumed = True
+        #Creating position on grid for apple
+        self.randomize_position(snake_positions)
+
+    def randomize_position(self, snake_positions):
+        """
+        Determines where to display apple on grid
+        If apple appears on location where snake already is, reruns the loop
+        """
+        while True:
+            new_position = (
+                random.randint(0, (WIDTH // GRID_SIZE - 1)) * GRID_SIZE,
+                random.randint(0, (HEIGHT // GRID_SIZE - 1)) * GRID_SIZE,
+            )
+
+            # Check if the new position collides with the snake's body
+            if new_position not in snake_positions and new_position[0] >= GRID_SIZE and new_position[1] >= GRID_SIZE and new_position[0] <= WIDTH-GRID_SIZE and new_position[1] <= WIDTH-GRID_SIZE:
+                self.position = new_position
+                self.consumed = False
+                break
+
+    #Renders the apple on the screen based on the coordinates randomized
+    def render(self):
+        if not self.consumed:
+            x, y = self.position
+            arcade.draw_rectangle_filled(x, y, GRID_SIZE, GRID_SIZE, self.color)
+
+
+# Custom exception for game over
+class GameOverException(Exception):
+    pass
+
+#Obstacle Class
+class Obstacle:
+    def __init__(self, snake_positions):
+        #Initialize position of first obstacle on the screen
+        self.position = (0, 0)
+        self.color = arcade.color.AO
+        #Utilize random position to make sure its not on the same coordinate as snake
+        self.randomize_position(snake_positions)
+
+    #Same method as used in the Apple Class
+    def randomize_position(self, snake_positions):
+        while True:
+            new_position = (
+                random.randint(0, (WIDTH // GRID_SIZE - 1)) * GRID_SIZE,
+                random.randint(0, (HEIGHT // GRID_SIZE - 1)) * GRID_SIZE,
+            )
+
+            # Check if the new position collides with the snake's body
+            if new_position not in snake_positions and new_position[0] >= GRID_SIZE and new_position[1] >= GRID_SIZE and new_position[0] <= WIDTH-GRID_SIZE and new_position[1] <= WIDTH-GRID_SIZE:
+                self.position = new_position
+                break
+
+    #Render the obstacle as green square on the screen based on coordinate
+    def render(self):
+        x, y = self.position
+        arcade.draw_rectangle_filled(x, y, GRID_SIZE, GRID_SIZE, self.color)
+
+# Main Game class
+class SnakeGame(arcade.Window):
+    def __init__(self, width, height, title):
+        """
+        Initialize all Snake, Apple, Obstacle, and Laser objects
+        Timer code to track the duration of game
+    
+        """
+        super().__init__(width, height, title)
+        arcade.set_background_color(WHITE)
+        self.snake = Snake()
+        self.laser = Player()
+        self.apples = []
+        self.obstacles = []
+        self.spawn_new_apple()
+        self.game_over = False
+        self.apple_timer = APPLE_INTERVAL
+        self.score = 0
+        self.total_time = 0
+        self.direction = 1
+        #Timer framework to be displayed in on_draw
+        self.timer_text = arcade.Text(
+            text="00:00:00",
+            start_x=width - 50,
+            start_y=height - 20,
+            color=arcade.color.BLACK,
+            font_size=18,
+            anchor_x="center",
+        )
+
+    def on_draw(self):
+        """
+        Draws timer/objects/grid on screen
+        Shows winning/losing statemnts on screen
+        """
+        arcade.start_render()
+        # Display score at the top of the screen
+        #Drawing score on the screen
+        arcade.draw_text(
+            f"Score: {self.score}",
+            12,
+            HEIGHT - 15,
+            arcade.color.BLACK,
+            font_size=14,
+        )
+
+        #Drawing time, snake, and laser
+        self.timer_text.draw()
+        self.snake.render()
+        self.laser.render()
+
+        #Drawing the grid
+        for i in range(WIDTH // GRID_SIZE - 1):
+            for j in range(HEIGHT//GRID_SIZE - 1):
+                x = i * GRID_SIZE+GRID_SIZE
+                y = j * GRID_SIZE+GRID_SIZE
+
+                arcade.draw_rectangle_outline(x, y, GRID_SIZE, GRID_SIZE, arcade.color.BLACK)
+
+        #Rendering the apples on screen
+        for apple in self.apples:
+            apple.render()
+
+        #Rendering obstacles/green squares on screen
+        for obstacle in self.obstacles:
+            obstacle.render()
+
+        #Displaying winning/losing statements    
+        if self.game_over:
+            if (self.score > 5):
+                arcade.draw_text("YOU WIN!", WIDTH //2, HEIGHT//2 - 100, arcade.color.BLACK, font_size = 50, anchor_x = "center")
+                
+                WON.append(True)
+                
+                arcade.finish_render()
+                time.sleep(2.5)
+                arcade.exit()
+            else:
+                arcade.draw_text("YOU LOSE!", WIDTH //2, HEIGHT//2 - 100, arcade.color.BLACK, font_size = 50, anchor_x = "center")
+                
+                WON.append(False)
+                
+                arcade.finish_render()
+                time.sleep(2.5)
+                arcade.exit()
+
+    #Method changing direction of snake based on key pressed
+    def on_key_press(self, key, modifiers):
+        if not self.game_over:
+            if key == arcade.key.UP and self.snake.direction != (0, -1):
+                self.snake.direction = (0, 1)
+            elif key == arcade.key.DOWN and self.snake.direction != (0, 1):
+                self.snake.direction = (0, -1)
+            elif key == arcade.key.LEFT and self.snake.direction != (1, 0):
+                self.snake.direction = (-1, 0)
+            elif key == arcade.key.RIGHT and self.snake.direction != (-1, 0):
+                self.snake.direction = (1, 0)
+
+    def check_collision(self):
+        """
+        Checking different collisions with snake
+        Raising Game Exceptions based on different collisions
+        """
+        #Coordinates of the snake
+        head_x, head_y = self.snake.get_head_position()
+
+        #If obstacle is hit, game over
+        for obstacle in self.obstacles:
+            obstacle_x, obstacle_y = obstacle.position
+            if head_x == obstacle_x and head_y == obstacle_y:
+                self.game_over = True
+
+        #If snake hits laser, game over
+        if self.laser.positionLaserx == head_x and self.laser.positionLasery == head_y:
+            self.game_over = True
+
+        #Updating apples based on matchign coordinates of snake and apple
+        for apple in self.apples:
+            if not apple.consumed:
+                apple_x, apple_y = apple.position
+                if head_x == apple_x and head_y == apple_y:
+                    self.snake.length += 1
+                    apple.consumed = True
+                    self.score += 1
+                    self.spawn_new_apple()
+                    new_obstacle = Obstacle(self.snake.positions)
+                    self.obstacles.append(new_obstacle)
+                    new_obstacle = Obstacle(self.snake.positions)
+                    self.obstacles.append(new_obstacle)
+
+
+        # Check if the head collides with the snake's body
+        if (head_x, head_y) in self.snake.positions[1:]:
+            raise GameOverException("Snake collided with its body")
+
+        #Check if snake collides with wall of grid
+        if (
+            head_x <= 0
+            or head_x >= WIDTH
+            or head_y <= 0
+            or head_y >= HEIGHT
+        ):
+            raise GameOverException("Snake collided with the wall")
+        
+        #Moves laser up and down the same column as the apple
+        for apple in self.apples:
+            apple_x, apple_y = apple.position
+            self.laser.positionLaserx = apple_x
+
+        if self.laser.positionLasery == 320:
+            self.laser.positionLasery -= 20
+            self.direction = -1
+        elif self.laser.positionLasery == 20:
+            self.laser.positionLasery += 20
+            self.direction = 1
+        else:
+            self.laser.positionLasery += 40 * (self.direction)
+
+    #Creates new apple to be displayed after consumption
+    def spawn_new_apple(self):
+        new_apple = Apple(self.snake.positions)
+        self.apples = [new_apple]
+
+    def on_update(self, delta_time):
+        """
+        Checking if collisions occur to end game
+        Updating timer to show on the screen
+        """
+        #Checking any snake collisions if game is ongoing
+        if not self.game_over:
+            try:
+                self.snake.update(delta_time)
+                self.check_collision()
+            except: GameOverException
+
+        #Updating on display timer and ending game if time limit exceeds
+        if self.total_time < 30.0:
+            self.total_time += delta_time
+            seconds = int(self.total_time) % 60
+            seconds_100s = int((self.total_time - seconds) * 100)
+            self.timer_text.text = f"{seconds:02d}:{seconds_100s:02d}"
+            return self.total_time
+        else:
+            self.game_over = True
+            
+#Main method running entire program
+def snakeGame():
+    window = SnakeGame(WIDTH, HEIGHT, "Snake Game")
+    arcade.run()
+    window.close()
+    arcade.exit()
+    return(WON)

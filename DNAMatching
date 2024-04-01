@@ -1,0 +1,220 @@
+
+#Made by Raghav (with some help from Aditya)
+import arcade
+import arcade.gui
+import random
+import time
+
+#Initializing Global Variables
+SCREEN_WIDTH = 900
+SCREEN_HEIGHT = 900
+SCREEN_TITLE = "DNA MATCHING GAME"
+DEFAULT_LINE = 45
+
+WON = []
+
+#Generating Sequences to be displayed as choices for the Reference Sequence
+def generateSequences():
+        sequences = []
+        choices = ["A","C","T","G"]
+        
+        for x in range(0,6):
+            tempSequence = ""
+            #Creates a random 7 letter sequence of A,T,C,G
+            for y in range (0,7):
+               random_number = random.randint(0,3)
+               nucleotide = choices[random_number]
+               tempSequence += nucleotide
+            sequences.append(tempSequence)
+        
+        return sequences
+
+#Randomizes Sequence that pairs with a sequence from the generateSequences list     
+def generateMatchingSequence():
+  sequences = generateSequences()
+  index = random.randint(0, len(sequences)-1)
+  #Random sequence as reference
+  referSequence = sequences[index]
+  
+  matchingSequence = ""
+
+  #Creates the matching pair for a random sequence in the list
+  for letter in referSequence:
+    if letter == "A":
+        matchingSequence += "T"
+    elif letter == "T":
+        matchingSequence += "A"
+    elif letter == "C":
+        matchingSequence += "G"
+    else:
+        matchingSequence += "C"
+
+  return matchingSequence
+
+#Checking if the matching sequence is correct to the reference
+def matching(ref):
+    match = ""
+
+    #Reassigns the values to check the accuracy of the binding sequence
+    for letter in ref:
+        if letter == "A":
+            match += "T"
+        elif letter == "T":
+            match += "A"
+        elif letter == "C":
+            match += "G"
+        else:
+            match += "C"
+
+    #Returns the correct and updated sequence accordingly
+    return(match)
+
+#Tester/MyGame Class  
+class MyGame(arcade.Window):
+    """
+    Main application class.
+    """
+    def __init__(self):
+        """
+        Initializing timer variables
+        Framework to be used for displaying timer on screen
+        """
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        self.total_time = 0.0
+        self.timer_text = arcade.Text(
+            text="00:00:00",
+            start_x=SCREEN_WIDTH - 100,
+            start_y=SCREEN_HEIGHT - 50,
+            color=arcade.color.BLACK,
+            font_size=20,
+            anchor_x="center",
+        )
+
+        #Utilizing uimanager library for the buttons
+        self.uimanager = arcade.gui.UIManager()
+        self.uimanager.enable()
+
+        #Initializing Forward, Backward, and DNA button using UI manager
+        self.v_box = arcade.gui.UIBoxLayout()
+        Forward_button = arcade.gui.UIFlatButton(text="Forward", width=200)
+        self.v_box.add(Forward_button.with_space_around(bottom=20))
+        self.DNA_button = arcade.gui.UIFlatButton(text="DNA Button", width=200)
+        self.v_box.add(self.DNA_button.with_space_around(bottom=20))
+        Back_button = arcade.gui.UIFlatButton(text="Back", width=200)
+        self.v_box.add(Back_button.with_space_around(bottom=20))
+
+        #Adding buttons to the UI manager via the widget
+        self.uimanager.add(
+            arcade.gui.UIAnchorWidget(
+                anchor_x="center_x",
+                anchor_y="center_y",
+                child=self.v_box)
+        )
+        
+        """
+        Initializing all the sequences generated and the matching sequence
+        Checking the clicking of the buttons
+        """
+        self.sequences = generateSequences()
+        self.button_index = 0
+        
+        #Updates clicking of the buttons with the UI Manager
+        self.DNA_button.on_click = self.on_click_DNA_button
+        Back_button.on_click = self.on_click_Back_button
+        Forward_button.on_click = self.on_click_Forward_button
+
+        self.selected = False
+        self.string = ""
+        
+        self.matchingSequence = generateMatchingSequence()
+
+        #Checking if the matching sequence is correct
+        self.correct = matching(self.matchingSequence)
+        self.sequences.insert((random.randint(0, len(self.sequences)-1)), self.correct)
+
+    #If DNA button is clicked, answer choice for sequence is locked in  
+    def on_click_DNA_button(self, event):
+        self.DNA_button.text = self.sequences[self.button_index]
+        self.selected = True
+        self.string = str(self.sequences[self.button_index])
+
+    #Back and Front button methods to change the displayed sequence choices
+    def on_click_Back_button(self, event):
+        if self.button_index > 0:
+            self.button_index = self.button_index - 1
+            self.DNA_button.text = self.sequences[self.button_index]
+    
+    def on_click_Forward_button(self, event):
+        if self.button_index < len(self.sequences) - 1:
+            self.button_index = self.button_index + 1
+            self.DNA_button.text = self.sequences[self.button_index]
+
+    #Setting up the inital arcade screen
+    def setup(self):
+        arcade.set_background_color(arcade.color.LIGHT_GRAY)
+        self.total_time = 0.0
+
+    #Drawing the components on the screen
+    def on_draw(self):
+        self.clear()
+        #Drawing the background 
+        arcade.draw_texture_rectangle(
+            SCREEN_WIDTH // 2,
+            SCREEN_HEIGHT // 2,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            arcade.load_texture(r"dna.jpg")
+        )
+
+        #Drawing the timer and the buttons
+        self.timer_text.draw()
+        self.uimanager.draw()
+
+        start_x = 0
+        start_y = SCREEN_HEIGHT - DEFAULT_LINE * 3
+
+        #Writing the reference sequence on the screen
+        arcade.draw_text("Sequence: " + self.matchingSequence,
+                         start_x,
+                         start_y,
+                         arcade.color.BLACK,
+                         20,
+                         width=SCREEN_WIDTH,
+                         align="center")
+        
+        #Checking if the selected sequence is correct and display statement
+        if (self.selected):
+            if (self.correct != self.string):
+                arcade.draw_text("YOU LOSE!", SCREEN_WIDTH //2, SCREEN_HEIGHT//2 - 200, arcade.color.BLACK, font_size = 50, anchor_x = "center")
+                
+                WON.append(False)
+
+                arcade.finish_render()
+                time.sleep(2.5)
+                arcade.exit()
+            else:
+                arcade.draw_text("YOU WIN!", SCREEN_WIDTH //2, SCREEN_HEIGHT//2 - 200, arcade.color.BLACK, font_size = 50, anchor_x = "center")
+                
+                WON.append(True)
+
+                arcade.finish_render()
+                time.sleep(2.5)
+                arcade.exit()
+
+    #Updates the timer to be shown on the screen       
+    def on_update(self, delta_time):
+        if self.total_time < 20.0:
+            self.total_time += delta_time
+            seconds = int(self.total_time) % 60
+            seconds_100s = int((self.total_time - seconds) * 100)
+            self.timer_text.text = f"{seconds:02d}:{seconds_100s:02d}"
+        else:
+            self.selected = True
+
+#Main method running entire program
+def dna():
+    window = MyGame()
+    window.setup()
+    arcade.run()
+    window.close()
+    return(WON)
